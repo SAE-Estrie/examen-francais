@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Examen de Compréhension Orale</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+.view { display: none; padding: 24px; max-width: 800px; margin: 0 auto; }
+.view.active { display: block; }
+.exam-header { background: #1a3c5e; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+.exam-header h1 { font-size: .95rem; font-weight: 600; }
+#timer { font-size: 1.1rem; font-weight: 700; background: #e53e3e; padding: 6px 14px; border-radius: 6px; }
+#timer.warn { animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+.card { background: white; border-radius: 12px; padding: 28px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.card h2 { font-size: 1.05rem; color: #1a3c5e; margin-bottom: 16px; }
+#view-login { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+#view-login .card { width: 100%; max-width: 420px; }
+#view-login h1 { font-size: 1.4rem; color: #1a3c5e; margin-bottom: 6px; text-align: center; }
+#view-login p.sub { color: #718096; text-align: center; margin-bottom: 22px; font-size: .88rem; }
+input[type=text], input[type=password] { width: 100%; padding: 11px 13px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; margin-bottom: 10px; transition: border .2s; }
+input:focus { outline: none; border-color: #1a3c5e; }
+.btn { width: 100%; padding: 12px; background: #1a3c5e; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+.btn:hover { background: #2a5580; }
+.btn-sm { width: auto; padding: 8px 20px; font-size: .85rem; }
+.btn-danger { background: #e53e3e; }
+.btn-danger:hover { background: #c53030; }
+.error-msg { color: #e53e3e; font-size: .85rem; text-align: center; margin-top: 8px; min-height: 18px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.info-box { background: #ebf4ff; border-radius: 8px; padding: 14px; text-align: center; }
+.info-box .val { font-size: 1.4rem; font-weight: 700; color: #1a3c5e; }
+.info-box .lbl { font-size: .76rem; color: #718096; margin-top: 2px; }
+.preambule-box { background: #fffbeb; border-left: 4px solid #f6ad55; border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; font-size: .9rem; line-height: 1.7; color: #4a3c00; }
+.preambule-box strong { color: #744210; display: block; margin-bottom: 6px; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+.audio-block { background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+.audio-block .track-label { font-weight: 600; color: #1a3c5e; margin-bottom: 10px; font-size: .9rem; }
+.audio-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.play-btn { background: #1a3c5e; color: white; border: none; border-radius: 8px; padding: 9px 20px; font-size: .9rem; cursor: pointer; font-weight: 600; transition: background .2s; white-space: nowrap; }
+.play-btn:hover:not(:disabled) { background: #2a5580; }
+.play-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: .75rem; font-weight: 600; }
+.badge-new { background: #c6f6d5; color: #276749; }
+.badge-used { background: #fed7d7; color: #c53030; }
+.audio-progress { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 10px; }
+.audio-progress-fill { height: 100%; background: #1a3c5e; border-radius: 3px; width: 0%; transition: width .4s; }
+.question-block { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; }
+.question-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.q-text { font-weight: 600; margin-bottom: 12px; line-height: 1.5; font-size: .95rem; }
+.q-num { color: #1a3c5e; margin-right: 6px; }
+.options label { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 8px; margin-bottom: 7px; cursor: pointer; border: 2px solid #e2e8f0; transition: all .15s; font-size: .9rem; line-height: 1.4; }
+.options label:hover { border-color: #1a3c5e; background: #ebf4ff; }
+.options label.selected { border-color: #1a3c5e; background: #ebf4ff; }
+.options input[type=radio] { margin-top: 2px; accent-color: #1a3c5e; flex-shrink: 0; }
+.progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: #1a3c5e; border-radius: 3px; transition: width .3s; }
+.progress-label { font-size: .78rem; color: #718096; margin-bottom: 14px; text-align: right; }
+.submit-area { text-align: center; padding: 16px 0 8px; }
+.submit-area p { color: #718096; font-size: .83rem; margin-bottom: 12px; }
+#view-done { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
+#view-done .card { max-width: 460px; }
+.done-icon { font-size: 3rem; margin-bottom: 14px; }
+#view-done h2 { font-size: 1.2rem; color: #1a3c5e; margin-bottom: 10px; }
+#view-done p { color: #718096; line-height: 1.7; font-size: .9rem; }
+#view-admin { padding-top: 24px; }
+.admin-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+.admin-top h2 { font-size: 1.2rem; color: #1a3c5e; }
+.tabs { display: flex; gap: 4px; }
+.tab { padding: 8px 18px; border-radius: 8px 8px 0 0; cursor: pointer; font-size: .85rem; font-weight: 600; border: 2px solid #e2e8f0; border-bottom: none; color: #718096; background: #f7fafc; }
+.tab.active { background: white; color: #1a3c5e; border-color: #1a3c5e; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+th { background: #1a3c5e; color: white; padding: 10px 12px; text-align: left; font-size: .8rem; }
+td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+tr:hover td { background: #f7fafc; }
+.badge-done { background: #c6f6d5; color: #276749; padding: 2px 10px; border-radius: 20px; font-size: .73rem; font-weight: 600; }
+.badge-pending { background: #fefcbf; color: #744210; padding: 2px 10px; border-radius: 20px; font-size: .73rem; font-weight: 600; }
+.code-chip { background: #ebf4ff; border: 1px solid #bee3f8; color: #1a3c5e; font-family: monospace; padding: 3px 10px; border-radius: 6px; font-size: .85rem; }
+.score-hi { color: #276749; font-weight: 700; }
+.score-mid { color: #744210; font-weight: 700; }
+.score-lo { color: #c53030; font-weight: 700; }
+.gen-area { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.gen-area input { width: 200px; margin-bottom: 0; }
+#view-admin-login { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+#view-admin-login .card { max-width: 380px; width: 100%; }
+.notice { background: #ebf4ff; border-left: 4px solid #1a3c5e; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; font-size: .88rem; color: #1a3c5e; line-height: 1.6; }
+@media(max-width:520px){ .info-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="view-login" class="view active">
+  <div class="card">
+    <h1>🎧 Compréhension Orale</h1>
+    <p class="sub">Test de français — Entrez votre code d'accès pour commencer</p>
+    <input type="text" id="login-code" placeholder="Code d'accès (ex: CAND-XXXX)" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn" onclick="doLogin()">Accéder à l'examen</button>
+    <div class="error-msg" id="login-error"></div>
+    <hr style="margin:18px 0;border:none;border-top:1px solid #e2e8f0;">
+    <p style="text-align:center;font-size:.78rem;color:#a0aec0;">Examinateur ? <span style="color:#1a3c5e;cursor:pointer;text-decoration:underline;" onclick="showView('view-admin-login')">Tableau de bord</span></p>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="view-admin-login" class="view">
+  <div class="card">
+    <h2 style="color:#1a3c5e;margin-bottom:16px;">🔒 Accès Examinateur</h2>
+    <input type="password" id="admin-pw" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <button class="btn" onclick="doAdminLogin()">Connexion</button>
+    <div class="error-msg" id="admin-login-error"></div>
+    <p style="text-align:center;margin-top:14px;font-size:.8rem;"><span style="color:#1a3c5e;cursor:pointer;text-decoration:underline;" onclick="showView('view-login')">← Retour</span></p>
+  </div>
+</div>
+
+<!-- INSTRUCTIONS -->
+<div id="view-instructions" class="view">
+  <div class="card">
+    <h2>📋 Instructions de l'examen</h2>
+    <div class="info-grid">
+      <div class="info-box"><div class="val">45 min</div><div class="lbl">Durée totale</div></div>
+      <div class="info-box"><div class="val">61</div><div class="lbl">Questions</div></div>
+      <div class="info-box"><div class="val">52</div><div class="lbl">Documents audio</div></div>
+      <div class="info-box"><div class="val">1×</div><div class="lbl">Écoute maximum</div></div>
+    </div>
+    <ul style="color:#4a5568;font-size:.88rem;line-height:2.1;padding-left:18px;margin-bottom:20px;">
+      <li>Chaque document audio ne peut être écouté <strong>qu'une seule fois</strong>.</li>
+      <li>Les questions sont présentées <strong>dans l'ordre</strong> du test.</li>
+      <li>Parfois, <strong>une seule bande sonore</strong> contient la réponse à plusieurs questions.</li>
+      <li>La minuterie démarre dès que vous cliquez sur <em>Commencer</em>.</li>
+      <li>Votre score sera communiqué par l'examinateur.</li>
+      <li>Installez-vous dans un endroit calme avec des écouteurs.</li>
+    </ul>
+    <button class="btn" onclick="startExam()">▶ Commencer l'examen</button>
+  </div>
+</div>
+
+<!-- EXAM HEADER -->
+<div id="exam-header" class="exam-header" style="display:none;">
+  <h1>🎧 Compréhension Orale — Test de français</h1>
+  <div id="timer">45:00</div>
+</div>
+
+<!-- EXAM -->
+<div id="view-exam" class="view" style="padding-top:14px;">
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="progress-label" id="progress-label">0 / 61 réponses</div>
+  <div id="exam-content"></div>
+  <div class="submit-area">
+    <p>Vérifiez vos réponses avant de soumettre. Cette action est irréversible.</p>
+    <button class="btn btn-danger btn-sm" style="padding:12px 36px;" onclick="submitExam()">✅ Soumettre l'examen</button>
+  </div>
+</div>
+
+<!-- DONE -->
+<div id="view-done" class="view">
+  <div class="card">
+    <div class="done-icon">✅</div>
+    <h2>Examen soumis avec succès</h2>
+    <p>Vos réponses ont été enregistrées.<br>Votre score vous sera communiqué par l'examinateur.<br><br>Vous pouvez fermer cette fenêtre.</p>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <div class="admin-top">
+    <h2>📊 Tableau de bord — Examinateur</h2>
+    <button class="btn btn-danger btn-sm" onclick="showView('view-login')">Déconnexion</button>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tab-results',this)">Résultats</div>
+    <div class="tab" onclick="switchTab('tab-codes',this)">Codes d'accès</div>
+  </div>
+  <div id="tab-results" class="tab-content active card" style="border-radius:0 12px 12px 12px;">
+    <table><thead><tr><th>Nom</th><th>Code</th><th>Statut</th><th>Score</th><th>Temps</th><th>Date</th></tr></thead>
+    <tbody id="results-body"></tbody></table>
+  </div>
+  <div id="tab-codes" class="tab-content card" style="border-radius:0 12px 12px 12px;">
+    <h2 style="margin-bottom:14px;">Générer un code candidat</h2>
+    <div class="gen-area">
+      <input type="text" id="cand-name" placeholder="Nom du candidat" onkeydown="if(event.key==='Enter')generateCode()">
+      <button class="btn btn-sm" onclick="generateCode()">Générer</button>
+    </div>
+    <div id="generated-code" style="margin-bottom:16px;"></div>
+    <hr style="margin-bottom:16px;border:none;border-top:1px solid #e2e8f0;">
+    <h2 style="margin-bottom:12px;">Codes actifs</h2>
+    <table><thead><tr><th>Nom</th><th>Code</th><th>Statut</th></tr></thead>
+    <tbody id="codes-body"></tbody></table>
+  </div>
+</div>
+
+<script>
+const ADMIN_PASSWORD = "admin1234";
+const EXAM_DURATION_MIN = 45;
+
+// ================================================================
+// STRUCTURE DES FICHIERS AUDIO
+// Index 0 = preambule.mp3 (introduction, pas de question)
+// Index 1 = question1.mp3, Index 2 = question2.mp3, etc.
+// ================================================================
+function audioUrl(filename) { return `audio/${filename}.mp3`; }
+
+// ================================================================
+// QUESTIONS
+// audioFile : nom du fichier MP3 sans extension
+// q : texte de la question
+// opts : options de réponse
+// ans : index de la bonne réponse (0-based)
+// num : numéro affiché (1-61)
+// ================================================================
+const ALL_QUESTIONS = [
+  // Q1-5 : question1.mp3
+  { audioFile:"question1", num:1,  q:"Comment s'appelle la personne ?", opts:["La nouvelle collègue s'appelle Sophie.","L'amie s'appelle Lucie.","Elle a 37 ans."], ans:0 },
+  { audioFile:"question2", num:2,  q:"Sophie est de quelle nationalité ?", opts:["Canadienne","Suisse","Russe"], ans:1 },
+  { audioFile:"question3", num:3,  q:"La femme a combien d'enfants ?", opts:["Elle n'a pas d'enfant.","Elle a 2 enfants.","Elle a 12 enfants."], ans:0 },
+  { audioFile:"question4", num:4,  q:"Complétez la phrase : La femme est née le 23 ____ 1953.", opts:["Avril","Juillet","Août"], ans:1 },
+  { audioFile:"question5", num:5,  q:"Complétez la phrase : Le métier de la femme est ___", opts:["Coiffeuse","Vendeur","Vendeuse"], ans:2 },
+  { audioFile:"question6", num:6,  q:"Que fait la personne ?", opts:["Elle salue","Elle s'excuse","Elle se présente"], ans:2 },
+  { audioFile:"question7", num:7,  q:"Que fait la personne ?", opts:["Elle demande","Elle remercie","Elle refuse"], ans:1 },
+  { audioFile:"question8", num:8,  q:"Complétez la phrase : Les pauses sont à ___", opts:["10 h et 14 h","6 h et 14 h","10 h et midi"], ans:0 },
+  { audioFile:"question9", num:9,  q:"À quelle heure ouvre le secrétariat ?", opts:["Le secrétariat ouvre le lundi, le mardi et le mercredi.","Le secrétariat ouvre à 7 h le matin.","Le secrétariat est ouvert jusqu'à 21 h."], ans:1 },
+  { audioFile:"question10", num:10, q:"Complétez la phrase : Les inscriptions se font ____", opts:["Au cours de Zumba.","Au comptoir du gym.","Dans la classe."], ans:1 },
+  { audioFile:"question11", num:11, q:"Les consignes sont :", opts:["Avoir des demandes et fermer la sonnerie du cellulaire.","Avoir le matériel et son téléphone cellulaire.","Avoir le matériel et fermer la sonnerie du cellulaire."], ans:2 },
+  { audioFile:"question12", num:12, q:"Quelle réponse est appropriée ?", opts:["Je n'ai pas de cousin nommé Eduardo.","Bonjour Eduardo! Enchanté!","Merci beaucoup, au revoir!"], ans:1 },
+  { audioFile:"question13", num:13, q:"Combien ça coute pour les abonnées du gym ?", opts:["C'est gratuit.","Ça coute 5$ par classe.","Ça coute 5$ pour les non-membres."], ans:0 },
+  { audioFile:"question14", num:14, q:"Quelle phrase est correcte ?", opts:["La salle des enseignants est dans la salle d'informatique.","Vous pouvez aller dans la salle des enseignants.","La salle des enseignants est en face de la salle des étudiants."], ans:1 },
+  { audioFile:"question15", num:15, q:"Quelle phrase est correcte ?", opts:["Vous devez continuer jusqu'à la première lumière.","La bibliothèque est à côté de la pharmacie.","Vous devez tourner à droite à la pharmacie."], ans:2 },
+  { audioFile:"question16", num:16, q:"Que fait la cliente ?", opts:["Elle demande où trouver un produit.","Elle remercie le commis.","Elle répond à une question."], ans:0 },
+  { audioFile:"question17", num:17, q:"Que fait le commis ?", opts:["Il cherche les produits laitiers.","Il répond à la cliente.","Il s'excuse."], ans:1 },
+  { audioFile:"question18", num:18, q:"Quelles sont les consignes données par le pharmacien ?", opts:["Prendre le médicament le matin avec un repas et boire beaucoup d'eau.","Prendre le médicament le matin avec de l'eau.","Évitez les brulements d'estomac.","Prendre le médicament, manger chaque matin et éviter les brulements d'estomac."], ans:0 },
+  { audioFile:"question19", num:19, q:"Que demande la gérante ?", opts:["Remplir un formulaire et donner son CV.","Choisir des disponibilités pour une entrevue.","Remplir un formulaire et donner ses disponibilités.","Voir l'offre d'emploi."], ans:2 },
+  { audioFile:"question20", num:20, q:"Quelle réponse est appropriée ?", opts:["J'ai deux ans d'expérience.","Je peux commencer à partir de demain.","Je cherche un emploi à temps plein.","C'est agréable de travailler ici."], ans:1 },
+  { audioFile:"question21", num:21, q:"Quelle phrase est vraie ?", opts:["Kevin adore le soccer et il joue chaque semaine.","Kevin joue toujours plusieurs fois par semaine.","Kevin aime le soccer, mais il préfère l'été."], ans:2 },
+  { audioFile:"question22", num:22, q:"Que fait la personne ?", opts:["Elle demande un renseignement.","Elle donne un renseignement.","Elle s'informe sur la santé.","Elle fait un compliment."], ans:0 },
+  { audioFile:"question23", num:23, q:"Que faut-il faire ?", opts:["Brancher l'appareil avant de lire les instructions de sécurité.","Lire les instructions de sécurité et ensuite brancher l'appareil.","Lire les instructions de sécurité après avoir branché l'appareil.","Brancher l'appareil et oublier de lire les instructions de sécurité."], ans:1 },
+  { audioFile:"question24", num:24, q:"Quelle phrase est vraie ?", opts:["Les capsules se vendent seulement dans les magasins.","Les capsules se vendent sur place, à l'épicerie et dans plusieurs magasins.","On peut trouver les capsules seulement à l'épicerie.","On ne peut pas trouver les capsules en magasins."], ans:1 },
+  { audioFile:"question25", num:25, q:"Quelles sont les consignes du médecin ?", opts:["Boire de l'eau avant de se coucher.","Boire de l'eau avant de se coucher et beaucoup dormir.","Boire de l'eau, prendre l'antibiotique le matin et l'antidouleur le soir.","Beaucoup dormir, prendre l'antibiotique le matin et l'antidouleur le soir."], ans:2 },
+  { audioFile:"question26", num:26, q:"Quelle est la réponse appropriée ?", opts:["Oui, c'est parfait, je t'attends à 5h!","Oui, je peux venir te chercher à 5h!","Non, je ne connais pas le restaurant.","Oui, j'aime aller au restaurant."], ans:1 },
+  { audioFile:"question27", num:27, q:"Que doit faire la personne en premier ?", opts:["Aller tout droit","Aller à gauche","Tourner à gauche","Tourner au musée"], ans:2 },
+  { audioFile:"question28", num:28, q:"Quel est le sujet de cette conversation ?", opts:["Elle parle de la météo.","Elle raconte sa fin de semaine.","Elle explique comment aller au lac Fraser.","Elle pose des questions sur le camping."], ans:2 },
+  { audioFile:"question29", num:29, q:"De quoi la personne parle-t-elle ?", opts:["Elle parle de son gout pour les activités de plein air.","Elle parle de son mari.","Elle explique des consignes de camping.","Elle parle de sports."], ans:0 },
+  { audioFile:"question30", num:30, q:"Que dit la nouvelle ?", opts:["Il y a eu 12 000 matchs au centre Bell.","Il y a eu un match sportif très important.","12 000 personnes ont joué un match de hockey.","L'équipe préférée est importante."], ans:1 },
+  { audioFile:"question31", num:31, q:"Quelle est la conséquence de l'accident ?", opts:["Plusieurs véhicules sont touchés.","Une partie de l'autoroute a été fermée.","Il y a eu des blessés.","Les secours attendent sur place."], ans:1 },
+  { audioFile:"question32", num:32, q:"Quel type d'emploi est décrit ?", opts:["Un poste de livreur.","Un poste dans la construction.","Un poste administratif.","Un poste en soins."], ans:2 },
+  { audioFile:"question33", num:33, q:"La femme veut changer d'appartement. Pourquoi ?", opts:["Elle n'aime pas son appart.","Il y a eu des plaintes.","Les voisins sont trop bruyants.","Le propriétaire change."], ans:2 },
+  { audioFile:"question34", num:34, q:"Que s'est-il passé ?", opts:["Une personne est malade.","Il y a eu un accident.","Les secours sont arrivés.","Le propriétaire change."], ans:1 },
+  { audioFile:"question35", num:35, q:"Complétez la phrase : La personne est ____", opts:["Positive et motivée.","Joyeuse et excitée.","Irritée et intolérante.","Curieuse et confiante."], ans:0 },
+  // Q36-37 : même audio
+  { audioFile:"question36-37", num:36, q:"Quelle est la raison de l'appel ?", opts:["L'homme a besoin d'un rendez-vous à 8 heures.","L'homme a besoin d'un rendez-vous chez le médecin.","L'homme a besoin d'un rendez-vous au garage.","L'homme veut parler au Dr Boileau."], ans:1 },
+  { audioFile:"question36-37", num:37, q:"Quelles consignes la personne doit-elle suivre ?", opts:["Remplir un formulaire de carte d'assurance-maladie.","Prévoir 15 minutes pour la durée du rendez-vous.","Apporter sa carte d'assurance-maladie et arriver à l'avance.","Prendre un rendez-vous et ouvrir un dossier."], ans:2 },
+  { audioFile:"question38", num:38, q:"Complétez la phrase : La personne doit prendre un antibiotique si ____", opts:["L'infection est due à un virus.","Elle boit de l'eau et se repose.","C'est une infection bactérienne.","Elle ne suit pas les recommandations."], ans:2 },
+  // Q39-40 : même audio
+  { audioFile:"question39-40", num:39, q:"Quelle est l'idée principale de cet extrait ?", opts:["La fatigue au réveil est toujours normale.","La fatigue au réveil peut avoir différentes causes.","Changer de mode de vie évite la fatigue au réveil.","Dormir plus n'est pas toujours possible."], ans:1 },
+  { audioFile:"question39-40", num:40, q:"Qu'est-il conseillé de faire ?", opts:["Ne pas s'inquiéter de la fatigue au réveil.","Dormir plus longtemps chaque jour.","Chercher les causes du problème, essayer de le régler.","Changer de mode de vie."], ans:2 },
+  { audioFile:"question41", num:41, q:"Que s'est-il passé pour Lucas cette journée-là ?", opts:["Il a laissé son CV à la réception d'une entreprise où il souhaite travailler.","Il a rencontré le patron d'une entreprise et a passé une entrevue immédiatement.","Il a pris un rendez-vous pour une entrevue la semaine suivante.","Il était nerveux et a refusé une offre d'emploi."], ans:1 },
+  // Q42-43 : même audio
+  { audioFile:"question42-43", num:42, q:"Pourquoi les employés doivent-ils remettre leur CV à M. Poitras ?", opts:["Parce qu'il est responsable de transférer le personnel et d'engager les nouveaux employés pour le magasin.","Parce qu'il organise l'ouverture officielle du magasin.","Parce qu'il s'occupe de la formation des nouveaux employés.","Parce qu'il s'occupe des postes affichés de tous les magasins de l'entreprise."], ans:0 },
+  { audioFile:"question42-43", num:43, q:"Comment les postes seront-ils attribués ?", opts:["Les employés actuels pourront d'abord postuler, puis les postes seront ouverts à l'externe.","Les postes seront offerts d'abord à des candidats externes, avant d'être affichés à l'interne.","Les postes seront attribués automatiquement aux employés les plus anciens.","Les postes seront attribués par M. Poitras sur une période d'un mois."], ans:0 },
+  { audioFile:"question44", num:44, q:"De quoi la femme parle-t-elle dans cet extrait ?", opts:["Elle décrit le trajet de son déplacement.","Elle raconte qu'elle a été témoin d'un accident.","Elle explique pourquoi elle a été retardée.","Elle parle des travaux de construction sur le pont."], ans:2 },
+  { audioFile:"question45", num:45, q:"Quel est le sentiment de l'homme à propos du film ?", opts:["Il est content.","Il est satisfait.","Il est neutre.","Il est déçu."], ans:3 },
+  { audioFile:"question46", num:46, q:"Quelle est l'opinion générale de la personne qui parle de Philippe ?", opts:["Elle est inquiète des résultats de Philippe.","Elle est satisfaite du travail de Philippe.","Elle pense que Philippe a des difficultés en classe.","Elle veut que Philippe change de classe."], ans:1 },
+  // Q47-48 : même audio
+  { audioFile:"question47-48", num:47, q:"Qu'est-ce que la publicité trompeuse ?", opts:["C'est interdit par la loi.","Une publicité dans le journal, sur une affiche, à la télévision, à la radio ou sur Internet.","Une publicité qui décrit les qualités d'un produit.","Une publicité qui donne de fausses informations."], ans:3 },
+  { audioFile:"question47-48", num:48, q:"Dans quelles circonstances ces publicités sont-elles tolérées ?", opts:["Ces publicités ne sont pas permises.","Si c'est une publicité pour un bien de consommation.","Si c'est une publicité faite par le vendeur.","Que ce soit dans le journal, sur une affiche, à la télévision, à la radio ou sur Internet."], ans:0 },
+  { audioFile:"question49", num:49, q:"Quel est le message principal de cet extrait ?", opts:["Il est difficile pour un nouveau client d'obtenir une carte de crédit.","Un nouveau client doit toujours donner une garantie pour obtenir une carte de crédit.","Un nouveau client peut parfois obtenir une carte de crédit plus facilement qu'il ne le pense, s'il se renseigne.","Les banques refusent souvent les nouveaux clients qui n'ont pas d'historique de crédit."], ans:2 },
+  // Q50-51 : même audio
+  { audioFile:"question50-51", num:50, q:"Complétez la phrase : Cet extrait comporte ____", opts:["Des faits et une opinion.","Des faits et un exemple.","Une opinion et une énumération.","Une explication et des procédures."], ans:1 },
+  { audioFile:"question50-51", num:51, q:"Quel est le message principal de cet extrait ?", opts:["Certaines activités économiques, comme le bioalimentaire, jouent un rôle important dans l'économie du Québec et dans plusieurs régions.","Toutes les régions du Québec travaillent principalement dans le même secteur économique.","Le secteur bioalimentaire est la seule activité économique importante au Québec.","Les régions du Québec ne participent pas au développement économique."], ans:0 },
+  { audioFile:"question52", num:52, q:"Selon l'extrait, pourquoi l'achat d'une maison peut-il poser problème ?", opts:["Parce que les maisons sont toujours trop petites.","Parce que les gens prennent souvent leur décision sous le coup de l'émotion.","Parce que les banques refusent les prêts immobiliers.","Parce que les maisons sont rarement disponibles."], ans:1 },
+  { audioFile:"question53", num:53, q:"Que peut-on comprendre de l'appel de la personne ?", opts:["Elle veut annuler sa candidature pour le poste.","Elle s'inquiète de ne pas avoir encore reçu de réponse après l'entrevue.","Elle veut proposer une autre candidate pour le poste.","Elle s'inquiète pour madame Laramée."], ans:1 },
+  // Q54-55 : même audio
+  { audioFile:"question54-55", num:54, q:"Que comprend-on au sujet des annonces d'offre d'emploi ?", opts:["Elles donnent uniquement des informations techniques sur le poste.","Elles peuvent aussi transmettre plusieurs messages, certains explicites et d'autres implicites.","Elles sont difficiles à comprendre.","Elles contiennent toujours des informations cachées sur le salaire."], ans:1 },
+  { audioFile:"question54-55", num:55, q:"Quel conseil est donné au chercheur d'emploi ?", opts:["Lire attentivement les offres d'emploi et répondre rapidement.","Envoyer son CV à plusieurs entreprises qui publient une annonce.","Attendre qu'un employeur le contacte quand une offre l'intéresse.","Comprendre tout le message d'une offre afin de pouvoir y répondre correctement."], ans:3 },
+  // Q56-57 : même audio
+  { audioFile:"question56-57", num:56, q:"Pourquoi l'auteur affirme-t-il que l'emploi tient une place importante dans notre vie ?", opts:["Parce que les gens changent souvent d'emploi.","Parce que le travail occupe une grande partie de notre temps.","Parce que les emplois peuvent demander beaucoup d'efforts.","Parce que le travail permet de gagner de l'argent."], ans:1 },
+  { audioFile:"question56-57", num:57, q:"Quelle conclusion peut-on tirer de cet extrait ?", opts:["Les relations de travail ont peu d'impact sur la santé.","Le travail peut avoir un effet important sur le bien-être général d'une personne.","Les employés devraient éviter les relations avec leurs collègues.","La santé dépend surtout de l'alimentation et de l'exercice."], ans:1 },
+  { audioFile:"question58", num:58, q:"Que comprend-on dans cet échange ?", opts:["La patiente est toujours aux soins intensifs et son état est inquiétant, l'infirmier est déçu.","La patiente est en meilleur état et sera transférée dans une chambre, l'infirmier est soulagé.","La patiente arrive aux soins intensifs vers midi, l'infirmier est soulagé.","La patiente va quitter l'hôpital aujourd'hui, l'infirmier est déçu."], ans:1 },
+  // Q59-60-61 : même audio
+  { audioFile:"question59-60-61", num:59, q:"Que comprend-on au sujet du bail ?", opts:["C'est un document facultatif entre un locataire et un propriétaire.","C'est un document officiel qui établit les conditions de location.","C'est un document utilisé pour payer le loyer.","C'est un document utilisé par le propriétaire, il y a différents modèles."], ans:1 },
+  { audioFile:"question59-60-61", num:60, q:"Pourquoi cette obligation est-elle importante pour le locataire ?", opts:["Pour connaitre les règles et les conditions de la location.","Pour pouvoir modifier le montant du loyer.","Pour choisir de la durée du bail.","Pour obtenir des informations sur les autres locataires de l'immeuble."], ans:0 },
+  { audioFile:"question59-60-61", num:61, q:"Que peut-on déduire de l'existence de ces règlements ?", opts:["Les locataires devraient connaitre les règles pour éviter des conflits ou des sanctions.","Les règlements permettent aux locataires de modifier le bail au besoin.","Les règlements remplacent le bail signé entre le locataire et le propriétaire.","Les propriétaires ne sont pas responsables de faire respecter ces règles."], ans:0 },
+];
+
+// ================================================================
+// STATE
+// ================================================================
+let DB = {
+  candidates: { "CAND-DEMO": { name: "Candidat Démo", result: null } },
+  results: []
+};
+let currentCandidate = null;
+let timerInterval = null;
+let timeLeft = 0;
+let audioPlayed = {};
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('exam-header').style.display = (id === 'view-exam') ? 'flex' : 'none';
+}
+
+function doLogin() {
+  const code = document.getElementById('login-code').value.trim().toUpperCase();
+  const err = document.getElementById('login-error');
+  if (!DB.candidates[code]) { err.textContent = "Code invalide. Vérifiez votre code d'accès."; return; }
+  if (DB.candidates[code].result) { err.textContent = "Ce code a déjà été utilisé."; return; }
+  currentCandidate = code;
+  err.textContent = '';
+  showView('view-instructions');
+}
+
+function doAdminLogin() {
+  if (document.getElementById('admin-pw').value !== ADMIN_PASSWORD) {
+    document.getElementById('admin-login-error').textContent = "Mot de passe incorrect."; return;
+  }
+  loadAdminDashboard();
+  showView('view-admin');
+}
+
+// ================================================================
+// BUILD EXAM UI
+// ================================================================
+function startExam() {
+  audioPlayed = {};
+  buildExamUI();
+  showView('view-exam');
+  window.scrollTo(0, 0);
+  timeLeft = EXAM_DURATION_MIN * 60;
+  startTimer();
+  updateProgress();
+}
+
+function buildExamUI() {
+  const container = document.getElementById('exam-content');
+  container.innerHTML = '';
+
+  // --- PRÉAMBULE (audio seul, pas de question) ---
+  const preCard = document.createElement('div');
+  preCard.className = 'card';
+  preCard.innerHTML = `
+    <div class="preambule-box">
+      <strong>📌 Préambule</strong>
+      Le test a une durée totale de 45 minutes et il contient 61 questions. Vous ne pouvez écouter les bandes sonores qu'une seule fois et vous ne pourrez pas revenir sur les questions pour corriger vos réponses. Soyez attentifs aux consignes puisque parfois une seule bande sonore contient la réponse à plusieurs questions.<br><br>Bonne chance !
+    </div>
+    ${buildAudioBlock('preambule', 'pre')}`;
+  container.appendChild(preCard);
+  attachAudioEvents('pre', 'preambule');
+
+  // --- QUESTIONS groupées par audioFile ---
+  const groups = [];
+  const seen = {};
+  ALL_QUESTIONS.forEach((q, i) => {
+    if (!seen[q.audioFile]) {
+      seen[q.audioFile] = true;
+      groups.push({ audioFile: q.audioFile, questions: [] });
+    }
+    groups[groups.length - 1].questions.push({ q, i });
+  });
+
+  // Rebuild properly
+  const groupMap = {};
+  ALL_QUESTIONS.forEach((q, i) => {
+    if (!groupMap[q.audioFile]) groupMap[q.audioFile] = [];
+    groupMap[q.audioFile].push({ q, i });
+  });
+
+  const orderedFiles = [];
+  ALL_QUESTIONS.forEach(q => { if (!orderedFiles.includes(q.audioFile)) orderedFiles.push(q.audioFile); });
+
+  orderedFiles.forEach(file => {
+    const items = groupMap[file];
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    // Avertissement multi-questions
+    let notice = '';
+    if (items.length > 1) {
+      const nums = items.map(it => it.q.num).join(' et ');
+      notice = `<div class="notice">📢 Cet extrait contient la réponse aux questions ${nums}.</div>`;
+    }
+
+    card.innerHTML = notice + buildAudioBlock(file, file);
+
+    items.forEach(({ q, i }) => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'question-block';
+      qDiv.innerHTML = `
+        <div class="q-text"><span class="q-num">${q.num}.</span> ${q.q}</div>
+        <div class="options">
+          ${q.opts.map((o, oi) => `<label><input type="radio" name="q${i}" value="${oi}" onchange="markSelected(this)"> ${o}</label>`).join('')}
+        </div>`;
+      card.appendChild(qDiv);
+    });
+
+    container.appendChild(card);
+    attachAudioEvents(file, file);
+  });
+}
+
+function buildAudioBlock(file, key) {
+  return `
+    <div class="audio-block">
+      <div class="track-label">🎵 Document audio</div>
+      <audio id="audio-${key}" src="${audioUrl(file)}" preload="none"></audio>
+      <div class="audio-controls">
+        <button class="play-btn" id="playbtn-${key}" onclick="togglePlay('${key}')">▶ Écouter</button>
+        <span class="badge badge-new" id="badge-${key}">Non écouté — 1 écoute autorisée</span>
+      </div>
+      <div class="audio-progress"><div class="audio-progress-fill" id="apf-${key}"></div></div>
+    </div>`;
+}
+
+function attachAudioEvents(file, key) {
+  setTimeout(() => {
+    const audio = document.getElementById('audio-' + key);
+    if (!audio) return;
+    audio.addEventListener('play', () => {
+      if (!audioPlayed[key]) {
+        audioPlayed[key] = true;
+        document.getElementById('badge-' + key).className = 'badge badge-used';
+        document.getElementById('badge-' + key).textContent = '⛔ Écoute utilisée';
+      }
+      document.getElementById('playbtn-' + key).textContent = '⏸ Pause';
+    });
+    audio.addEventListener('pause', () => { document.getElementById('playbtn-' + key).textContent = '▶ Reprendre'; });
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) document.getElementById('apf-' + key).style.width = (audio.currentTime / audio.duration * 100) + '%';
+    });
+    audio.addEventListener('ended', () => {
+      const btn = document.getElementById('playbtn-' + key);
+      btn.textContent = '🔇 Terminé'; btn.disabled = true;
+    });
+  }, 200);
+}
+
+function togglePlay(key) {
+  // Pause tous les autres
+  document.querySelectorAll('audio').forEach(a => { if (a.id !== 'audio-' + key && !a.paused) a.pause(); });
+  const audio = document.getElementById('audio-' + key);
+  if (!audio || audio.ended) return;
+  audio.paused ? audio.play() : audio.pause();
+}
+
+function markSelected(radio) {
+  document.querySelectorAll(`input[name="${radio.name}"]`).forEach(r => r.closest('label').classList.remove('selected'));
+  radio.closest('label').classList.add('selected');
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = ALL_QUESTIONS.length;
+  let answered = 0;
+  for (let i = 0; i < total; i++) { if (document.querySelector(`input[name="q${i}"]:checked`)) answered++; }
+  document.getElementById('progress-fill').style.width = (answered / total * 100) + '%';
+  document.getElementById('progress-label').textContent = `${answered} / ${total} réponses`;
+}
+
+function submitExam() {
+  const total = ALL_QUESTIONS.length;
+  let answered = 0;
+  for (let i = 0; i < total; i++) { if (document.querySelector(`input[name="q${i}"]:checked`)) answered++; }
+  if (answered < total && !confirm(`Vous avez répondu à ${answered}/${total} questions. Soumettre quand même ?`)) return;
+  collectResults();
+}
+
+function collectResults() {
+  clearInterval(timerInterval);
+  let correct = 0;
+  ALL_QUESTIONS.forEach((q, i) => {
+    const sel = document.querySelector(`input[name="q${i}"]:checked`);
+    if (sel && parseInt(sel.value) === q.ans) correct++;
+  });
+  const result = {
+    name: DB.candidates[currentCandidate].name,
+    code: currentCandidate,
+    score: correct,
+    total: ALL_QUESTIONS.length,
+    pct: Math.round(correct / ALL_QUESTIONS.length * 100),
+    timeSec: EXAM_DURATION_MIN * 60 - timeLeft,
+    date: new Date().toLocaleString('fr-CA')
+  };
+  DB.candidates[currentCandidate].result = result;
+  DB.results.push(result);
+  showView('view-done');
+}
+
+function startTimer() {
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 300) document.getElementById('timer').classList.add('warn');
+    if (timeLeft <= 0) { clearInterval(timerInterval); collectResults(); }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+  const s = String(timeLeft % 60).padStart(2, '0');
+  document.getElementById('timer').textContent = m + ':' + s;
+}
+
+function loadAdminDashboard() { renderResults(); renderCodes(); }
+
+function renderResults() {
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+  let hasRows = false;
+  DB.results.forEach(r => {
+    hasRows = true;
+    const cls = r.pct >= 70 ? 'score-hi' : r.pct >= 50 ? 'score-mid' : 'score-lo';
+    const m = String(Math.floor(r.timeSec/60)).padStart(2,'0'), s = String(r.timeSec%60).padStart(2,'0');
+    tbody.innerHTML += `<tr><td>${r.name}</td><td><span class="code-chip">${r.code}</span></td><td><span class="badge-done">Terminé</span></td><td class="${cls}">${r.score}/${r.total} (${r.pct}%)</td><td>${m}:${s}</td><td>${r.date}</td></tr>`;
+  });
+  Object.entries(DB.candidates).forEach(([code, c]) => {
+    if (!c.result) { hasRows = true; tbody.innerHTML += `<tr><td>${c.name}</td><td><span class="code-chip">${code}</span></td><td><span class="badge-pending">En attente</span></td><td>—</td><td>—</td><td>—</td></tr>`; }
+  });
+  if (!hasRows) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:20px;">Aucun résultat pour le moment</td></tr>';
+}
+
+function renderCodes() {
+  const tbody = document.getElementById('codes-body');
+  tbody.innerHTML = '';
+  Object.entries(DB.candidates).forEach(([code, c]) => {
+    tbody.innerHTML += `<tr><td>${c.name}</td><td><span class="code-chip">${code}</span></td><td>${c.result ? '<span class="badge-done">Utilisé</span>' : '<span class="badge-pending">Disponible</span>'}</td></tr>`;
+  });
+}
+
+function generateCode() {
+  const name = document.getElementById('cand-name').value.trim();
+  if (!name) { alert("Entrez un nom de candidat."); return; }
+  const code = 'CAND-' + Math.random().toString(36).substr(2,4).toUpperCase();
+  DB.candidates[code] = { name, result: null };
+  document.getElementById('generated-code').innerHTML = `
+    <p style="font-size:.83rem;color:#4a5568;margin-bottom:6px;">Code généré pour <strong>${name}</strong> :</p>
+    <span class="code-chip" style="font-size:1.05rem;">${code}</span>
+    <p style="font-size:.73rem;color:#a0aec0;margin-top:5px;">Usage unique — à communiquer au candidat.</p>`;
+  document.getElementById('cand-name').value = '';
+  renderCodes();
+  renderResults();
+}
+
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'tab-results') renderResults();
+  if (id === 'tab-codes') renderCodes();
+}
+</script>
+</body>
+</html>
