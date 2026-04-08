@@ -230,6 +230,13 @@ tr:hover td { background: #f7fafc; }
 <script>
 const ADMIN_PASSWORD = "admin1234";
 const EXAM_DURATION_MIN = 45;
+const API_URL = "https://script.google.com/macros/s/AKfycbyqe8z5JzarJ7xeQBm2ZNnHFojXGl3cCj3Fd_HdfD3ltBv72jOUHnWJ0TKQPl09glzQ/exec";
+
+async function api(params) {
+  const url = API_URL + '?' + new URLSearchParams(params).toString();
+  const r = await fetch(url);
+  return r.json();
+}
 
 function audioUrl(f) { return `audio/${f}.mp3`; }
 
@@ -313,7 +320,24 @@ ALL_QUESTIONS.forEach((q, i) => {
 });
 
 let DB = { candidates: { "CAND-DEMO": { name: "Candidat Démo", result: null } }, results: [] };
+
+async function saveDB() {
+  try { await window.storage.set('examDB', JSON.stringify(DB)); } catch(e) { console.warn('Storage save error:', e); }
+}
+
+async function loadDB() {
+  try {
+    const r = await window.storage.get('examDB');
+    if (r && r.value) {
+      const saved = JSON.parse(r.value);
+      // Fusionner en gardant CAND-DEMO toujours présent
+      DB = saved;
+      if (!DB.candidates['CAND-DEMO']) DB.candidates['CAND-DEMO'] = { name: "Candidat Démo", result: null };
+    }
+  } catch(e) { console.warn('Storage load error:', e); }
+}
 let currentCandidate = null;
+let currentCandidateName = null;
 let timerInterval = null;
 let timeLeft = 0;
 let audioPlayed = {};
@@ -327,21 +351,31 @@ function showView(id) {
   window.scrollTo(0, 0);
 }
 
-function doLogin() {
+async function doLogin() {
   const code = document.getElementById('login-code').value.trim().toUpperCase();
   const err = document.getElementById('login-error');
-  if (!DB.candidates[code]) { err.textContent = "Code invalide. Vérifiez votre code d'accès."; return; }
-  if (DB.candidates[code].result) { err.textContent = "Ce code a déjà été utilisé."; return; }
-  currentCandidate = code;
-  err.textContent = '';
-  showView('view-instructions');
+  err.textContent = 'Vérification...';
+  try {
+    const res = await api({ action: 'validateCode', code });
+    if (!res.valid) {
+      err.textContent = res.reason === 'used' ? "Ce code a déjà été utilisé." : "Code invalide. Vérifiez votre code d'accès.";
+      return;
+    }
+    currentCandidate = code;
+    currentCandidateName = res.nom;
+    err.textContent = '';
+    showView('view-instructions');
+  } catch(e) {
+    err.textContent = "Erreur de connexion. Réessayez.";
+  }
 }
 
-function doAdminLogin() {
+async function doAdminLogin() {
   if (document.getElementById('admin-pw').value !== ADMIN_PASSWORD) {
     document.getElementById('admin-login-error').textContent = "Mot de passe incorrect."; return;
   }
-  loadAdminDashboard();
+  document.getElementById('admin-login-error').textContent = 'Chargement...';
+  await loadAdminDashboard();
   showView('view-admin');
 }
 
@@ -536,74 +570,90 @@ function updateTimerDisplay() {
   document.getElementById('timer').textContent = m + ':' + s;
 }
 
-function collectResults() {
+async function collectResults() {
   clearInterval(timerInterval);
   let correct = 0;
   ALL_QUESTIONS.forEach((q, i) => { if (answers[i] === q.ans) correct++; });
-  const result = {
-    name: DB.candidates[currentCandidate].name,
-    code: currentCandidate,
-    score: correct,
-    total: ALL_QUESTIONS.length,
-    pct: Math.round(correct / ALL_QUESTIONS.length * 100),
-    timeSec: EXAM_DURATION_MIN * 60 - timeLeft,
-    date: new Date().toLocaleString('fr-CA')
-  };
-  DB.candidates[currentCandidate].result = result;
-  DB.results.push(result);
+  const mins = String(Math.floor((EXAM_DURATION_MIN * 60 - timeLeft) / 60)).padStart(2,'0');
+  const secs = String((EXAM_DURATION_MIN * 60 - timeLeft) % 60).padStart(2,'0');
+  try {
+    await api({
+      action: 'saveResult',
+      code: currentCandidate,
+      nom: currentCandidateName,
+      score: correct,
+      total: ALL_QUESTIONS.length,
+      pct: Math.round(correct / ALL_QUESTIONS.length * 100),
+      temps: mins + ':' + secs,
+      date: new Date().toLocaleString('fr-CA')
+    });
+  } catch(e) { console.warn('Erreur sauvegarde:', e); }
   showView('view-done');
 }
 
 // ================================================================
 // ADMIN
 // ================================================================
-function loadAdminDashboard() { renderResults(); renderCodes(); }
+async function loadAdminDashboard() {
+  try {
+    const data = await api({ action: 'getCandidats' });
+    renderResults(data.resultats || [], data.codes || []);
+    renderCodes(data.codes || []);
+  } catch(e) {
+    console.warn('Erreur chargement dashboard:', e);
+    renderResults([], []);
+    renderCodes([]);
+  }
+}
 
-function renderResults() {
+function renderResults(resultats, codes) {
   const tbody = document.getElementById('results-body');
   tbody.innerHTML = '';
   let hasRows = false;
-  DB.results.forEach(r => {
+  resultats.forEach(r => {
     hasRows = true;
     const cls = r.pct >= 70 ? 'score-hi' : r.pct >= 50 ? 'score-mid' : 'score-lo';
-    const m = String(Math.floor(r.timeSec/60)).padStart(2,'0'), s = String(r.timeSec%60).padStart(2,'0');
-    tbody.innerHTML += `<tr><td>${r.name}</td><td><span class="code-chip">${r.code}</span></td><td><span class="badge-done">Terminé</span></td><td class="${cls}">${r.score}/${r.total} (${r.pct}%)</td><td>${m}:${s}</td><td>${r.date}</td></tr>`;
+    tbody.innerHTML += `<tr><td>${r.nom}</td><td><span class="code-chip">${r.code}</span></td><td><span class="badge-done">Terminé</span></td><td class="${cls}">${r.score}/${r.total} (${r.pct}%)</td><td>${r.temps}</td><td>${r.date}</td></tr>`;
   });
-  Object.entries(DB.candidates).forEach(([code, c]) => {
-    if (!c.result) { hasRows = true; tbody.innerHTML += `<tr><td>${c.name}</td><td><span class="code-chip">${code}</span></td><td><span class="badge-pending">En attente</span></td><td>—</td><td>—</td><td>—</td></tr>`; }
+  // Candidats en attente
+  const usedCodes = resultats.map(r => r.code);
+  codes.filter(c => !usedCodes.includes(c.code)).forEach(c => {
+    hasRows = true;
+    tbody.innerHTML += `<tr><td>${c.nom}</td><td><span class="code-chip">${c.code}</span></td><td><span class="badge-pending">En attente</span></td><td>—</td><td>—</td><td>—</td></tr>`;
   });
   if (!hasRows) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:20px;">Aucun résultat pour le moment</td></tr>';
 }
 
-function renderCodes() {
+function renderCodes(codes) {
   const tbody = document.getElementById('codes-body');
   tbody.innerHTML = '';
-  Object.entries(DB.candidates).forEach(([code, c]) => {
-    tbody.innerHTML += `<tr><td>${c.name}</td><td><span class="code-chip">${code}</span></td><td>${c.result ? '<span class="badge-done">Utilisé</span>' : '<span class="badge-pending">Disponible</span>'}</td></tr>`;
+  codes.forEach(c => {
+    tbody.innerHTML += `<tr><td>${c.nom}</td><td><span class="code-chip">${c.code}</span></td><td>${c.utilise ? '<span class="badge-done">Utilisé</span>' : '<span class="badge-pending">Disponible</span>'}</td></tr>`;
   });
+  if (!codes.length) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#a0aec0;padding:16px;">Aucun code généré</td></tr>';
 }
 
-function generateCode() {
+async function generateCode() {
   const name = document.getElementById('cand-name').value.trim();
   if (!name) { alert("Entrez un nom de candidat."); return; }
   const code = 'CAND-' + Math.random().toString(36).substr(2,4).toUpperCase();
-  DB.candidates[code] = { name, result: null };
-  document.getElementById('generated-code').innerHTML = `
-    <p style="font-size:.83rem;color:#4a5568;margin-bottom:6px;">Code généré pour <strong>${name}</strong> :</p>
-    <span class="code-chip" style="font-size:1.05rem;">${code}</span>
-    <p style="font-size:.73rem;color:#a0aec0;margin-top:5px;">Usage unique — à communiquer au candidat.</p>`;
-  document.getElementById('cand-name').value = '';
-  renderCodes();
-  renderResults();
+  try {
+    await api({ action: 'addCode', code, nom: name });
+    document.getElementById('generated-code').innerHTML = `
+      <p style="font-size:.83rem;color:#4a5568;margin-bottom:6px;">Code généré pour <strong>${name}</strong> :</p>
+      <span class="code-chip" style="font-size:1.05rem;">${code}</span>
+      <p style="font-size:.73rem;color:#a0aec0;margin-top:5px;">Usage unique — à communiquer au candidat.</p>`;
+    document.getElementById('cand-name').value = '';
+    await loadAdminDashboard();
+  } catch(e) { alert("Erreur lors de la génération du code."); }
 }
 
-function switchTab(id, el) {
+async function switchTab(id, el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
-  if (id === 'tab-results') renderResults();
-  if (id === 'tab-codes') renderCodes();
+  await loadAdminDashboard();
 }
 </script>
 </body>
