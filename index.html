@@ -230,7 +230,7 @@ tr:hover td { background: #f7fafc; }
 <script>
 const ADMIN_PASSWORD = "admin1234";
 const EXAM_DURATION_MIN = 45;
-const API_URL = "https://script.google.com/macros/s/AKfycbyqe8z5JzarJ7xeQBm2ZNnHFojXGl3cCj3Fd_HdfD3ltBv72jOUHnWJ0TKQPl09glzQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxsIiJDcG1PgnvpZF7Xrd3S6SGH4krlk8REMb8OuI2c53H5NpeBeXv8uThgCJaS8KlH/exec";
 
 async function api(params) {
   const url = API_URL + '?' + new URLSearchParams(params).toString();
@@ -256,8 +256,8 @@ const ALL_QUESTIONS = [
   { audioFile:"question13", num:13, q:"Combien ça coute pour les abonnées du gym ?", opts:["C'est gratuit.","Ça coute 5$ par classe.","Ça coute 5$ pour les non-membres."], ans:0 },
   { audioFile:"question14", num:14, q:"Quelle phrase est correcte ?", opts:["La salle des enseignants est dans la salle d'informatique.","Vous pouvez aller dans la salle des enseignants.","La salle des enseignants est en face de la salle des étudiants."], ans:1 },
   { audioFile:"question15", num:15, q:"Quelle phrase est correcte ?", opts:["Vous devez continuer jusqu'à la première lumière.","La bibliothèque est à côté de la pharmacie.","Vous devez tourner à droite à la pharmacie."], ans:2 },
-  { audioFile:"question16", num:16, q:"Que fait la cliente ?", opts:["Elle demande où trouver un produit.","Elle remercie le commis.","Elle répond à une question."], ans:0 },
-  { audioFile:"question17", num:17, q:"Que fait le commis ?", opts:["Il cherche les produits laitiers.","Il répond à la cliente.","Il s'excuse."], ans:1 },
+  { audioFile:"question16", num:16, q:"Sélectionnez la bonne réponse : Que fait le client ?", opts:["Il demande où trouver un produit.","Il remercie le commis.","Il répond à une question."], ans:0 },
+  { audioFile:"question17", num:17, q:"Sélectionnez la bonne réponse : Que fait la commis ?", opts:["Elle cherche les produits laitiers.","Elle répond à la cliente.","Elle s'excuse."], ans:1 },
   { audioFile:"question18", num:18, q:"Quelles sont les consignes données par le pharmacien ?", opts:["Prendre le médicament le matin avec un repas et boire beaucoup d'eau.","Prendre le médicament le matin avec de l'eau.","Évitez les brulements d'estomac.","Prendre le médicament, manger chaque matin et éviter les brulements d'estomac."], ans:0 },
   { audioFile:"question19", num:19, q:"Que demande la gérante ?", opts:["Remplir un formulaire et donner son CV.","Choisir des disponibilités pour une entrevue.","Remplir un formulaire et donner ses disponibilités.","Voir l'offre d'emploi."], ans:2 },
   { audioFile:"question20", num:20, q:"Quelle réponse est appropriée ?", opts:["J'ai deux ans d'expérience.","Je peux commencer à partir de demain.","Je cherche un emploi à temps plein.","C'est agréable de travailler ici."], ans:1 },
@@ -274,7 +274,7 @@ const ALL_QUESTIONS = [
   { audioFile:"question31", num:31, q:"Quelle est la conséquence de l'accident ?", opts:["Plusieurs véhicules sont touchés.","Une partie de l'autoroute a été fermée.","Il y a eu des blessés.","Les secours attendent sur place."], ans:1 },
   { audioFile:"question32", num:32, q:"Quel type d'emploi est décrit ?", opts:["Un poste de livreur.","Un poste dans la construction.","Un poste administratif.","Un poste en soins."], ans:2 },
   { audioFile:"question33", num:33, q:"La femme veut changer d'appartement. Pourquoi ?", opts:["Elle n'aime pas son appart.","Il y a eu des plaintes.","Les voisins sont trop bruyants.","Le propriétaire change."], ans:2 },
-  { audioFile:"question34", num:34, q:"Que s'est-il passé ?", opts:["Une personne est malade.","Il y a eu un accident.","Les secours sont arrivés.","Le propriétaire change."], ans:1 },
+  { audioFile:"question34", num:34, q:"Que s'est-il passé ?", opts:["Une personne est malade.","Il y a eu un accident.","Les secours sont arrivés."], ans:1 },
   { audioFile:"question35", num:35, q:"Complétez la phrase : La personne est ____", opts:["Positive et motivée.","Joyeuse et excitée.","Irritée et intolérante.","Curieuse et confiante."], ans:0 },
   { audioFile:"question36-37", num:36, q:"Quelle est la raison de l'appel ?", opts:["L'homme a besoin d'un rendez-vous à 8 heures.","L'homme a besoin d'un rendez-vous chez le médecin.","L'homme a besoin d'un rendez-vous au garage.","L'homme veut parler au Dr Boileau."], ans:1 },
   { audioFile:"question36-37", num:37, q:"Quelles consignes la personne doit-elle suivre ?", opts:["Remplir un formulaire de carte d'assurance-maladie.","Prévoir 15 minutes pour la durée du rendez-vous.","Apporter sa carte d'assurance-maladie et arriver à l'avance.","Prendre un rendez-vous et ouvrir un dossier."], ans:2 },
@@ -343,6 +343,106 @@ let timeLeft = 0;
 let audioPlayed = {};
 let answers = {};
 let currentStep = 0;
+let isOnline = navigator.onLine;
+let autoSaveInterval = null;
+
+// ================================================================
+// SAUVEGARDE SESSION (localStorage + Google Sheets)
+// ================================================================
+function localKey(code) { return 'exam_session_' + code; }
+
+async function saveSession() {
+  if (!currentCandidate) return;
+  const session = {
+    currentCandidate, currentCandidateName, timeLeft,
+    answers, currentStep, audioPlayed, savedAt: Date.now()
+  };
+  // localStorage (même appareil)
+  localStorage.setItem(localKey(currentCandidate), JSON.stringify(session));
+  // Google Sheets (tout appareil)
+  try {
+    await api({
+      action: 'saveSession',
+      code: currentCandidate,
+      nom: currentCandidateName,
+      timeLeft,
+      currentStep,
+      answers: JSON.stringify(answers),
+      audioPlayed: JSON.stringify(audioPlayed)
+    });
+  } catch(e) { console.warn('Sauvegarde distante échouée:', e); }
+}
+
+async function loadSession(code) {
+  // 1. Essayer localStorage d'abord (plus rapide)
+  try {
+    const raw = localStorage.getItem(localKey(code));
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // 2. Fallback sur Google Sheets (autre appareil)
+  try {
+    const res = await api({ action: 'loadSession', code });
+    if (res.found) {
+      return {
+        currentCandidate: res.code,
+        currentCandidateName: res.nom,
+        timeLeft: parseInt(res.timeLeft),
+        currentStep: parseInt(res.currentStep),
+        answers: typeof res.answers === 'string' ? JSON.parse(res.answers) : res.answers,
+        audioPlayed: typeof res.audioPlayed === 'string' ? JSON.parse(res.audioPlayed) : (res.audioPlayed || {})
+      };
+    }
+  } catch(e) { console.warn('Chargement session distante échoué:', e); }
+  return null;
+}
+
+async function clearSession(code) {
+  localStorage.removeItem(localKey(code));
+  try { await api({ action: 'clearSession', code }); } catch(e) {}
+}
+
+// ================================================================
+// GESTION RÉSEAU
+// ================================================================
+function setupNetworkListeners() {
+  window.addEventListener('online', () => {
+    isOnline = true;
+    hideNetworkBanner();
+    if (document.getElementById('view-exam').classList.contains('active')) resumeTimer();
+  });
+  window.addEventListener('offline', () => {
+    isOnline = false;
+    showNetworkBanner();
+    if (document.getElementById('view-exam').classList.contains('active')) pauseTimer();
+    saveSession();
+  });
+}
+
+function showNetworkBanner() {
+  let banner = document.getElementById('network-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'network-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:#e53e3e;color:white;text-align:center;padding:10px;font-size:.9rem;font-weight:600;';
+    banner.textContent = '⚠️ Connexion perdue — le timer est en pause. Vos réponses sont sauvegardées.';
+    document.body.prepend(banner);
+  }
+  banner.style.display = 'block';
+}
+
+function hideNetworkBanner() {
+  const banner = document.getElementById('network-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function resumeTimer() {
+  if (!timerInterval) startTimer();
+}
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -355,6 +455,34 @@ async function doLogin() {
   const code = document.getElementById('login-code').value.trim().toUpperCase();
   const err = document.getElementById('login-error');
   err.textContent = 'Vérification...';
+
+  // Chercher session existante
+  try {
+    const session = await loadSession(code);
+    if (session) {
+      const mins = Math.floor(session.timeLeft / 60);
+      const secs = String(session.timeLeft % 60).padStart(2,'0');
+      const savedDate = session.savedAt ? new Date(session.savedAt).toLocaleString('fr-CA') : 'inconnue';
+      if (confirm(`Une session interrompue a été trouvée pour ce code.\n\n⏱ Temps restant : ${mins}:${secs}\n✅ Réponses sauvegardées : ${Object.keys(session.answers).length}/61\n💾 Dernière sauvegarde : ${savedDate}\n\nVoulez-vous reprendre là où vous étiez ?`)) {
+        currentCandidate = session.currentCandidate;
+        currentCandidateName = session.currentCandidateName;
+        timeLeft = session.timeLeft;
+        answers = session.answers;
+        currentStep = session.currentStep;
+        audioPlayed = session.audioPlayed || {};
+        err.textContent = '';
+        showView('view-exam');
+        startTimer();
+        renderStep();
+        autoSaveInterval = setInterval(saveSession, 30000);
+        return;
+      } else {
+        await clearSession(code);
+      }
+    }
+  } catch(e) {}
+
+  // Validation normale
   try {
     const res = await api({ action: 'validateCode', code });
     if (!res.valid) {
@@ -383,10 +511,11 @@ function startExam() {
   audioPlayed = {};
   answers = {};
   currentStep = 0;
-  showView('view-exam');
   timeLeft = EXAM_DURATION_MIN * 60;
+  showView('view-exam');
   startTimer();
   renderStep();
+  autoSaveInterval = setInterval(saveSession, 30000);
 }
 
 // ================================================================
@@ -557,8 +686,10 @@ function togglePlay(key) {
 function startTimer() {
   updateTimerDisplay();
   timerInterval = setInterval(() => {
+    if (!isOnline) return; // Timer en pause si hors ligne
     timeLeft--;
     updateTimerDisplay();
+    if (timeLeft % 30 === 0) saveSession(); // Sauvegarde toutes les 30 secondes
     if (timeLeft <= 300) document.getElementById('timer').classList.add('warn');
     if (timeLeft <= 0) { clearInterval(timerInterval); collectResults(); }
   }, 1000);
@@ -572,6 +703,8 @@ function updateTimerDisplay() {
 
 async function collectResults() {
   clearInterval(timerInterval);
+  clearInterval(autoSaveInterval);
+  clearSession(currentCandidate);
   let correct = 0;
   ALL_QUESTIONS.forEach((q, i) => { if (answers[i] === q.ans) correct++; });
   const mins = String(Math.floor((EXAM_DURATION_MIN * 60 - timeLeft) / 60)).padStart(2,'0');
@@ -584,7 +717,7 @@ async function collectResults() {
       score: correct,
       total: ALL_QUESTIONS.length,
       pct: Math.round(correct / ALL_QUESTIONS.length * 100),
-      temps: mins + ':' + secs,
+      temps: `${mins}min ${secs}s`,
       date: new Date().toLocaleString('fr-CA')
     });
   } catch(e) { console.warn('Erreur sauvegarde:', e); }
@@ -648,13 +781,16 @@ async function generateCode() {
   } catch(e) { alert("Erreur lors de la génération du code."); }
 }
 
-async function switchTab(id, el) {
+function switchTab(id, el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
-  await loadAdminDashboard();
+  loadAdminDashboard();
 }
+
+// Init
+setupNetworkListeners();
 </script>
 </body>
 </html>
